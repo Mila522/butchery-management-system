@@ -1,0 +1,68 @@
+name,category,unit_of_measure,selling_price,minimum_stock,active
+Score,Beverages,EACH,12.00,12,TRUE
+Reboost,Beverages,EACH,12.00,12,TRUE
+Powerade,Beverages,EACH,16.00,12,TRUE
+Coca-Cola 2L,Beverages,EACH,30.00,6,TRUE
+Coca-Cola 1.5L,Beverages,EACH,24.00,6,TRUE
+Fanta Orange 2L,Beverages,EACH,25.00,6,TRUE
+Fanta Orange 1.5L,Beverages,EACH,19.00,6,TRUE
+Stoney 2L,Beverages,EACH,25.00,6,TRUE
+Stoney 1.5L,Beverages,EACH,19.00,6,TRUE
+Breakfast Blend 1.5L,Beverages,EACH,39.00,6,TRUE
+Cappy Orange 1.5L,Beverages,EACH,26.00,6,TRUE
+Fanta Pineapple 2L,Beverages,EACH,25.00,6,TRUE
+Fanta Grape 2L,Beverages,EACH,25.00,6,TRUE
+Refresh Ginger 2L,Beverages,EACH,14.00,6,TRUE
+Refresh Apple 2L,Beverages,EACH,14.00,6,TRUE
+Refresh Pineapple 2L,Beverages,EACH,14.00,6,TRUE
+Refresh Cola 2L,Beverages,EACH,14.00,6,TRUE
+Still Water 1.5L,Beverages,EACH,15.00,12,TRUE
+Still Water 500ml,Beverages,EACH,8.00,24,TRUE
+Coca-Cola Can 440ml,Beverages,EACH,14.00,24,TRUE
+Stoney Can 440ml,Beverages,EACH,14.00,24,TRUE
+Fanta Can 440ml,Beverages,EACH,14.00,24,TRUE
+Coca-Cola Bottle 440ml,Beverages,EACH,14.00,24,TRUE
+Stoney Bottle 440ml,Beverages,EACH,14.00,24,TRUE
+Fanta Bottle 440ml,Beverages,EACH,14.00,24,TRUE
+Coca-Cola Bottle 300ml,Beverages,EACH,6.00,24,TRUE
+Fanta Bottle 300ml,Beverages,EACH,6.00,24,TRUE
+Stoney Bottle 300ml,Beverages,EACH,6.00,24,TRUE
+Cappy Juice 500ml,Beverages,EACH,13.00,12,TRUE
+Sparkling Water,Beverages,EACH,24.00,12,TRUE
+Sparkling Water Apple,Beverages,EACH,24.00,12,TRUE
+Sprite 2L,Beverages,EACH,25.00,6,TRUE
+Sprite 1.5L,Beverages,EACH,19.00,6,TRUE
+Schweppes Dry Lemon,Beverages,EACH,20.00,6,TRUE
+Schweppes Tonic Water,Beverages,EACH,20.00,6,TRUE
+Lemon Twist 2L,Beverages,EACH,25.00,6,TRUE
+Lemon Twist 1.5L,Beverages,EACH,19.00,6,TRUE
+Sparkling Water Iron Brew,Beverages,EACH,24.00,12,TRUE
+Sip Sap Orange,Beverages,EACH,5.00,24,TRUE
+Sip Sap Guava,Beverages,EACH,5.00,24,TRUE
+Sandwich,Cooked Food,EACH,12.00,10,TRUE
+Russian,Cooked Food,EACH,10.00,20,TRUE
+Polony,Cooked Food,EACH,1.50,50,TRUE
+Inqina Legusha,Cooked Food,EACH,8.50,20,TRUE
+Intloko Yegusha,Cooked Food,EACH,15.00,10,TRUE
+Steam Bread,Bakery,EACH,8.00,20,TRUE
+Cooked Wings,Cooked Meat,KG,145.00,5,TRUE
+Cooked Kota Legs,Cooked Meat,KG,130.00,5,TRUE
+Cooked Isifuba,Cooked Meat,KG,180.00,3,TRUE
+Cooked Gizzards,Cooked Meat,KG,100.00,3,TRUE
+Grilled Pork,Cooked Meat,KG,140.00,5,TRUE
+Cooked Beef Stew,Cooked Meat,KG,145.00,5,TRUE
+Pork Trotters,Cooked Meat,KG,70.00,5,TRUE
+Fried Chips,Cooked Food,KG,65.00,5,TRUE
+Spare Ribs,Fresh Meat,KG,190.00,5,TRUE
+Brown Bread Loaf,Bakery,EACH,16.00,20,TRUE
+White Bread Loaf,Bakery,EACH,17.00,20,TRUE
+Half Brown Bread,Bakery,EACH,8.50,20,TRUE
+Half White Bread,Bakery,EACH,9.00,20,TRUE
+Kota White Bread,Bakery,EACH,6.00,20,TRUE
+Kota Brown Bread,Bakery,EACH,6.00,20,TRUE
+Pork Chops,Fresh Meat,KG,110.00,5,TRUE
+Pork Belly,Fresh Meat,KG,120.00,5,TRUE
+Beef Stew,Fresh Meat,KG,130.00,5,TRUE
+Sausage,Fresh Meat,KG,120.00,5,TRUE
+Beef Kidney,Fresh Meat,KG,60.00,3,TRUE
+Amanqathe,Vegetables,KG,10.00,10,TRUE
