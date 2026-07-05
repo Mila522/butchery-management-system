@@ -13,7 +13,7 @@ router = APIRouter(
 )
 
 
-@router.post("/", response_model=DeliveryResponse)
+@router.post("", response_model=DeliveryResponse)
 def create_delivery(
     delivery: DeliveryCreate,
     db: Session = Depends(get_db),
@@ -22,7 +22,7 @@ def create_delivery(
     return delivery_service.create_delivery(db, delivery)
 
 
-@router.get("/", response_model=list[DeliveryResponse])
+@router.get("", response_model=list[DeliveryResponse])
 def list_deliveries(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
@@ -30,3 +30,8 @@ def list_deliveries(
     db: Session = Depends(get_db),
 ):
     return delivery_service.list_deliveries(db, limit, offset, search)
+
+
+@router.get("/{delivery_id}", response_model=DeliveryResponse)
+def get_delivery(delivery_id: int, db: Session = Depends(get_db)):
+    return delivery_service.get_delivery(db, delivery_id)

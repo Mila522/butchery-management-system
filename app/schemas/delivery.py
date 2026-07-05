@@ -9,14 +9,13 @@ class DeliveryItemCreate(BaseModel):
     quantity: Decimal = Field(gt=0)
     unit_cost: Decimal = Field(ge=0)
 
-
 class DeliveryCreate(BaseModel):
     invoice_number: str
     supplier_name: str
     delivery_date: datetime
     recorded_by: str
     notes: str | None = None
-    items: list[DeliveryItemCreate]
+    items: list[DeliveryItemCreate] = Field(min_length=1)
 
 class DeliveryItemResponse(BaseModel):
     id: int

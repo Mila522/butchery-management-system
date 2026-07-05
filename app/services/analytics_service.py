@@ -24,14 +24,14 @@ def dashboard(db: Session) -> dict:
     start, end = _day_bounds(today)
     month_start = today.replace(day=1)
 
-    today_sales = _sum_total(db.query(func.coalesce(func.sum(Sale.total), 0)).filter(Sale.sale_date.between(start, end)))
+    today_sales = _sum_total(db.query(func.coalesce(func.sum(Sale.total_amount), 0)).filter(Sale.sale_date.between(start, end)))
     today_cost = _sum_total(
         db.query(func.coalesce(func.sum(SaleItem.quantity * Product.purchase_price), 0))
         .join(Product, Product.id == SaleItem.product_id)
         .join(Sale, Sale.id == SaleItem.sale_id)
         .filter(Sale.sale_date.between(start, end))
     )
-    month_revenue = _sum_total(db.query(func.coalesce(func.sum(Sale.total), 0)).filter(Sale.sale_date >= month_start))
+    month_revenue = _sum_total(db.query(func.coalesce(func.sum(Sale.total_amount), 0)).filter(Sale.sale_date >= month_start))
 
     most_sold = (
         db.query(Product.id, Product.name, func.coalesce(func.sum(SaleItem.quantity), 0).label("quantity_sold"))
@@ -68,7 +68,7 @@ def dashboard(db: Session) -> dict:
 def sales_by_period(db: Session, start_date: date, end_date: date, grain: str) -> list[dict]:
     trunc = {"daily": "day", "weekly": "week", "monthly": "month"}[grain]
     rows = (
-        db.query(func.date_trunc(trunc, Sale.sale_date).label("period"), func.coalesce(func.sum(Sale.total), 0).label("total"))
+        db.query(func.date_trunc(trunc, Sale.sale_date).label("period"), func.coalesce(func.sum(Sale.total_amount), 0).label("total"))
         .filter(Sale.sale_date >= start_date, Sale.sale_date < end_date + timedelta(days=1))
         .group_by("period")
         .order_by("period")

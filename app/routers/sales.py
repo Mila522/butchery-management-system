@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import require_roles
-from app.models.user import UserRole
+from app.models.user import User, UserRole
 from app.schemas.sale import SaleCreate, SaleResponse
 from app.services import sale_service
 
@@ -23,9 +23,9 @@ def list_sales(
 def create_sale(
     payload: SaleCreate,
     db: Session = Depends(get_db),
-    _=Depends(require_roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.CASHIER)),
+    current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.CASHIER)),
 ):
-    return sale_service.create_sale(db, payload)
+    return sale_service.create_sale(db, payload, current_user)
 
 
 @router.get("/{sale_id}", response_model=SaleResponse)

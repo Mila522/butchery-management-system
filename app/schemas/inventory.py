@@ -28,8 +28,15 @@ class InventoryAdjustmentCreate(BaseModel):
     adjustment_date: datetime
 
 
-class InventoryAdjustmentResponse(InventoryAdjustmentCreate):
+class InventoryAdjustmentResponse(BaseModel):
     id: int
+    product_id: int | None
+    adjustment_type: AdjustmentType
+    quantity_adjusted: Decimal
+    reason: str | None
+    notes: str | None = None
+    adjusted_by: int | None = None
+    adjustment_date: date
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -45,19 +52,19 @@ class DamageCreate(BaseModel):
 
 class DamageResponse(DamageCreate):
     id: int
+    product_id: int | None
+    damage_date: date
+    reported_by: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class DailyStockSnapshotResponse(BaseModel):
     id: int
-    product_id: int
+    product_id: int | None
     stock_date: date
-    opening_stock: Decimal
-    closing_stock: Decimal
-    quantity_sold: Decimal
-    quantity_received: Decimal
-    quantity_damaged: Decimal
-    estimated_value: Decimal | None
+    opening_stock: Decimal | None
+    closing_stock: Decimal | None
+    notes: str | None = None
 
     model_config = ConfigDict(from_attributes=True)

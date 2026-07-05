@@ -1,6 +1,6 @@
 """Product Daily Status model for tracking daily product information."""
 
-from sqlalchemy import Column, Integer, DateTime, ForeignKey, Date, String, Numeric
+from sqlalchemy import Column, Integer, DateTime, ForeignKey, Date, String, Float
 from sqlalchemy.orm import relationship
 from datetime import datetime, date
 
@@ -16,18 +16,15 @@ class ProductDailyStatus(Base):
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     status_date = Column(Date, nullable=False, index=True)
     status = Column(String(50), default="active")  # e.g., 'active', 'low_stock', 'out_of_stock'
-    quantity_available = Column(Numeric(10, 2), nullable=False)
-    quantity_sold_today = Column(Numeric(10, 2), default=0)
-    daily_sales_value = Column(Numeric(12, 2), default=0)
+    quantity_available = Column(Integer, nullable=False)
+    quantity_sold_today = Column(Integer, default=0)
+    daily_sales_value = Column(Float, default=0.0)
     notes = Column(String(500))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    product = relationship(
-    "Product",
-    back_populates="daily_statuses"
-)
+    product = relationship("Product", back_populates="daily_status")
     
     def __repr__(self):
         return f"<ProductDailyStatus(id={self.id}, product_id={self.product_id}, date={self.status_date})>"

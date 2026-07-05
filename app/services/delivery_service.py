@@ -22,10 +22,14 @@ def list_deliveries(db: Session, limit: int = 50, offset: int = 0, search: str |
     return query.order_by(Delivery.delivery_date.desc()).offset(offset).limit(limit).all()
 
 
-def create_delivery(db: Session, payload: DeliveryCreate) -> Delivery:
-    if not payload.items:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Delivery must contain items.")
+def get_delivery(db: Session, delivery_id: int) -> Delivery:
+    delivery = db.query(Delivery).filter(Delivery.id == delivery_id).first()
+    if not delivery:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Delivery not found.")
+    return delivery
 
+
+def create_delivery(db: Session, payload: DeliveryCreate) -> Delivery:
     delivery = Delivery(
         invoice_number=payload.invoice_number,
         supplier_name=payload.supplier_name,

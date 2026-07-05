@@ -1,6 +1,6 @@
 """Daily Stock model for tracking inventory levels over time."""
 
-from sqlalchemy import Column, Integer, DateTime, ForeignKey, Date, Numeric
+from sqlalchemy import Column, Integer, DateTime, ForeignKey, Date, Float
 from sqlalchemy.orm import relationship
 from datetime import datetime, date
 
@@ -15,12 +15,12 @@ class DailyStock(Base):
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     stock_date = Column(Date, nullable=False, index=True)
-    opening_stock = Column(Numeric(10, 2), nullable=False)
-    closing_stock = Column(Numeric(10, 2), nullable=False)
-    quantity_sold = Column(Numeric(10, 2), default=0)
-    quantity_received = Column(Numeric(10, 2), default=0)
-    quantity_damaged = Column(Numeric(10, 2), default=0)
-    estimated_value = Column(Numeric(12, 2))
+    opening_stock = Column(Integer, nullable=False)
+    closing_stock = Column(Integer, nullable=False)
+    quantity_sold = Column(Integer, default=0)
+    quantity_received = Column(Integer, default=0)
+    quantity_damaged = Column(Integer, default=0)
+    estimated_value = Column(Float)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

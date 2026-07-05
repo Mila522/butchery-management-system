@@ -3,18 +3,6 @@ from app.models.user import UserRole
 
 from pydantic import BaseModel, ConfigDict
 
-class UserResponse(BaseModel):
-    id: int
-    username: str
-    email: str
-    full_name: str | None
-    role: str
-    is_active: bool
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"

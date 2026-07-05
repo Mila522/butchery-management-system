@@ -10,15 +10,30 @@ from app.models.customer import Customer
 from app.models.invoice import Invoice
 from app.models.invoice_item import InvoiceItem
 from app.models.product import Product
-from app.models.sale import Sale
+from app.models.sale import PaymentMethod, Sale
 from app.models.sale_item import SaleItem
+from app.models.user import User
 from app.schemas.sale import SaleCreate
 
 logger = logging.getLogger(__name__)
 
 
+def _next_receipt_number() -> str:
+    return f"SALE-{datetime.utcnow():%Y%m%d%H%M%S%f}"
+
+
 def _next_invoice_number() -> str:
     return f"INV-{datetime.utcnow():%Y%m%d%H%M%S%f}"
+
+
+def _get_payment_method(db: Session, payment_method_id: int | None) -> PaymentMethod | None:
+    if payment_method_id is None:
+        return db.query(PaymentMethod).filter(PaymentMethod.name.ilike("cash")).first()
+
+    payment_method = db.query(PaymentMethod).filter(PaymentMethod.id == payment_method_id).first()
+    if not payment_method:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment method not found.")
+    return payment_method
 
 
 def list_sales(db: Session, limit: int = 50, offset: int = 0):
@@ -32,21 +47,24 @@ def get_sale(db: Session, sale_id: int) -> Sale:
     return sale
 
 
-def create_sale(db: Session, payload: SaleCreate) -> Sale:
-    if payload.customer_id:
-        customer = db.query(Customer).filter(Customer.id == payload.customer_id).first()
-        if not customer or not customer.active:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Active customer not found.")
-
-    sale = Sale(
-        customer_id=payload.customer_id,
-        payment_method=payload.payment_method,
-        recorded_by=payload.recorded_by,
-        subtotal=Decimal("0"),
-        total=Decimal("0"),
-    )
-
+def create_sale(db: Session, payload: SaleCreate, current_user: User | None = None) -> Sale:
     try:
+        if payload.customer_id:
+            customer = db.query(Customer).filter(Customer.id == payload.customer_id).first()
+            if not customer or not customer.active:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Active customer not found.")
+
+        payment_method = _get_payment_method(db, payload.payment_method_id)
+        sale = Sale(
+            receipt_number=_next_receipt_number(),
+            customer_id=payload.customer_id,
+            cashier_id=current_user.id if current_user else None,
+            payment_method_id=payment_method.id if payment_method else None,
+            total_amount=Decimal("0"),
+            amount_paid=payload.amount_paid,
+            change_given=Decimal("0"),
+        )
+
         db.add(sale)
         db.flush()
 
@@ -75,7 +93,7 @@ def create_sale(db: Session, payload: SaleCreate) -> Sale:
                     sale_id=sale.id,
                     product_id=product.id,
                     quantity=item.quantity,
-                    unit_price=product.selling_price,
+                    selling_price=product.selling_price,
                     line_total=line_total,
                 )
             )
@@ -89,8 +107,14 @@ def create_sale(db: Session, payload: SaleCreate) -> Sale:
                 )
             )
 
-        sale.subtotal = subtotal
-        sale.total = subtotal
+        sale.total_amount = subtotal
+        if sale.amount_paid is not None:
+            if sale.amount_paid < subtotal:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Amount paid cannot be less than sale total.",
+                )
+            sale.change_given = sale.amount_paid - subtotal
         db.add_all(sale_items)
 
         invoice = Invoice(
@@ -102,17 +126,18 @@ def create_sale(db: Session, payload: SaleCreate) -> Sale:
         )
         db.add(invoice)
         db.flush()
+
         for invoice_item in invoice_items:
             invoice_item.invoice_id = invoice.id
         db.add_all(invoice_items)
 
         db.commit()
         db.refresh(sale)
-        logger.info("Sale %s recorded. Total: %s.", sale.id, sale.total)
+        logger.info("Sale %s recorded. Total: %s.", sale.id, sale.total_amount)
         return sale
     except IntegrityError as exc:
         db.rollback()
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Duplicate invoice number.") from exc
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Duplicate receipt or invoice number.") from exc
     except Exception:
         db.rollback()
         logger.exception("Failed to record sale.")

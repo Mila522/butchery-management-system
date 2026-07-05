@@ -12,8 +12,7 @@ from app.models.delivery import Delivery
 from app.models.delivery_item import DeliveryItem
 from app.models.inventory_adjustment import InventoryAdjustment
 from app.models.product import Product
-from app.models.sale import Sale
-from app.models.sale_item import SaleItem
+from app.models.user import User
 from app.schemas.inventory import DamageCreate, InventoryAdjustmentCreate
 
 logger = logging.getLogger(__name__)
@@ -26,17 +25,59 @@ def _get_locked_product(db: Session, product_id: int) -> Product:
     return product
 
 
-def create_adjustment(db: Session, payload: InventoryAdjustmentCreate) -> InventoryAdjustment:
+def list_adjustments(db: Session, limit: int = 50, offset: int = 0, product_id: int | None = None):
+    query = db.query(InventoryAdjustment)
+    if product_id is not None:
+        query = query.filter(InventoryAdjustment.product_id == product_id)
+    return query.order_by(InventoryAdjustment.adjustment_date.desc()).offset(offset).limit(limit).all()
+
+
+def get_adjustment(db: Session, adjustment_id: int) -> InventoryAdjustment:
+    adjustment = db.query(InventoryAdjustment).filter(InventoryAdjustment.id == adjustment_id).first()
+    if not adjustment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory adjustment not found.")
+    return adjustment
+
+
+def list_damages(db: Session, limit: int = 50, offset: int = 0, product_id: int | None = None):
+    query = db.query(Damage)
+    if product_id is not None:
+        query = query.filter(Damage.product_id == product_id)
+    return query.order_by(Damage.damage_date.desc()).offset(offset).limit(limit).all()
+
+
+def get_damage(db: Session, damage_id: int) -> Damage:
+    damage = db.query(Damage).filter(Damage.id == damage_id).first()
+    if not damage:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Damage record not found.")
+    return damage
+
+
+def create_adjustment(db: Session, payload: InventoryAdjustmentCreate, current_user: User | None = None) -> InventoryAdjustment:
     try:
         product = _get_locked_product(db, payload.product_id)
+        if not product.active:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot adjust inactive product.")
+
         if payload.adjustment_type.value == "increase":
             product.current_stock += payload.quantity_adjusted
+            quantity_change = payload.quantity_adjusted
         else:
             if product.current_stock < payload.quantity_adjusted:
-                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Stock cannot go below zero.")
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Insufficient stock for {product.name}. Available: {product.current_stock}.",
+                )
             product.current_stock -= payload.quantity_adjusted
+            quantity_change = -payload.quantity_adjusted
 
-        adjustment = InventoryAdjustment(**payload.model_dump())
+        adjustment = InventoryAdjustment(
+            product_id=payload.product_id,
+            adjustment_date=payload.adjustment_date.date(),
+            quantity_change=quantity_change,
+            reason=payload.reason.value,
+            adjusted_by=current_user.id if current_user else None,
+        )
         db.add(adjustment)
         db.commit()
         db.refresh(adjustment)
@@ -48,14 +89,26 @@ def create_adjustment(db: Session, payload: InventoryAdjustmentCreate) -> Invent
         raise
 
 
-def create_damage(db: Session, payload: DamageCreate) -> Damage:
+def create_damage(db: Session, payload: DamageCreate, current_user: User | None = None) -> Damage:
     try:
         product = _get_locked_product(db, payload.product_id)
+        if not product.active:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot damage inactive product.")
+
         if product.current_stock < payload.quantity_damaged:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Stock cannot go below zero.")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Insufficient stock for {product.name}. Available: {product.current_stock}.",
+        )
         product.current_stock -= payload.quantity_damaged
 
-        damage = Damage(**payload.model_dump())
+        damage = Damage(
+            product_id=payload.product_id,
+            damage_date=payload.damage_date.date(),
+            quantity=payload.quantity_damaged,
+            reason=payload.reason,
+            recorded_by=current_user.id if current_user else None,
+        )
         db.add(damage)
         db.commit()
         db.refresh(damage)
@@ -80,30 +133,23 @@ def create_daily_snapshot(db: Session, snapshot_date: date) -> list[DailyStock]:
             snapshots.append(existing)
             continue
 
-        sold = db.query(func.coalesce(func.sum(SaleItem.quantity), 0)).join(Sale).filter(
-            SaleItem.product_id == product.id,
-            func.date(Sale.sale_date) == snapshot_date,
-        ).scalar()
         received = db.query(func.coalesce(func.sum(DeliveryItem.quantity), 0)).join(Delivery).filter(
             DeliveryItem.product_id == product.id,
             func.date(Delivery.delivery_date) == snapshot_date,
         ).scalar()
-        damaged = db.query(func.coalesce(func.sum(Damage.quantity_damaged), 0)).filter(
+        damaged = db.query(func.coalesce(func.sum(Damage.quantity), 0)).filter(
             Damage.product_id == product.id,
-            func.date(Damage.damage_date) == snapshot_date,
+            Damage.damage_date == snapshot_date,
         ).scalar()
 
         closing = product.current_stock
-        opening = closing + Decimal(str(sold)) + Decimal(str(damaged)) - Decimal(str(received))
+        opening = closing + Decimal(str(damaged)) - Decimal(str(received))
         snapshot = DailyStock(
             product_id=product.id,
             stock_date=snapshot_date,
             opening_stock=opening,
             closing_stock=closing,
-            quantity_sold=sold,
-            quantity_received=received,
-            quantity_damaged=damaged,
-            estimated_value=closing * product.purchase_price,
+            notes=f"Received: {received}; damaged: {damaged}",
         )
         db.add(snapshot)
         snapshots.append(snapshot)
