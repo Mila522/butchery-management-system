@@ -7,15 +7,12 @@ from app.routers import (
     analytics,
     auth,
     categories,
-    customers,
     damages,
     dashboard,
     deliveries,
     inventory,
     inventory_adjustments,
-    invoices,
     products,
-    sales,
 )
 
 app = FastAPI(
@@ -38,12 +35,9 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(products.router)
 app.include_router(categories.router)
-app.include_router(customers.router)
 app.include_router(deliveries.router)
 app.include_router(damages.router)
 app.include_router(inventory_adjustments.router)
-app.include_router(sales.router)
-app.include_router(invoices.router)
 app.include_router(inventory.router)
 app.include_router(dashboard.router)
 app.include_router(analytics.router)

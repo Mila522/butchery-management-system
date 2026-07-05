@@ -33,6 +33,6 @@ class DailyAnalytics(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     product = relationship(
-        "Product",
-        back_populates="daily_analytics",
-    )
+    "Product",
+    back_populates="analytics",
+)
