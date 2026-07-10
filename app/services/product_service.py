@@ -80,3 +80,10 @@ def deactivate_product(db: Session, product_id: int) -> Product:
     db.commit()
     db.refresh(product)
     return product
+
+def activate_product(db: Session, product_id: int) -> Product:
+    product = get_product(db, product_id)
+    product.active = True
+    db.commit()
+    db.refresh(product)
+    return product

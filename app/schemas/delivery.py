@@ -20,6 +20,7 @@ class DeliveryCreate(BaseModel):
 class DeliveryItemResponse(BaseModel):
     id: int
     product_id: int
+    product_name: str | None = None
     quantity: Decimal
     unit_cost: Decimal
 
@@ -34,6 +35,8 @@ class DeliveryResponse(BaseModel):
     recorded_by: str
     notes: str | None
 
+
     items: list[DeliveryItemResponse]
+    created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

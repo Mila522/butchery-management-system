@@ -1,11 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
+from app.routers import daily_stock
 
 from app.core.database import engine
 from app.routers import (
     analytics,
     auth,
+    business_days,
     categories,
     damages,
     dashboard,
@@ -13,6 +15,7 @@ from app.routers import (
     inventory,
     inventory_adjustments,
     products,
+
 )
 
 app = FastAPI(
@@ -33,6 +36,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(business_days.router)
 app.include_router(products.router)
 app.include_router(categories.router)
 app.include_router(deliveries.router)
@@ -41,7 +45,7 @@ app.include_router(inventory_adjustments.router)
 app.include_router(inventory.router)
 app.include_router(dashboard.router)
 app.include_router(analytics.router)
-
+app.include_router(daily_stock.router)
 
 @app.get("/")
 def home():

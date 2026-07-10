@@ -3,6 +3,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, Enum
 from datetime import datetime
 import enum
+from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 
@@ -28,6 +29,10 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+        # Relationships
+    
+
     
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}', role='{self.role}')>"

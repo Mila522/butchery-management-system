@@ -1,5 +1,4 @@
 import logging
-
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
@@ -8,6 +7,12 @@ from app.models.delivery import Delivery
 from app.models.delivery_item import DeliveryItem
 from app.models.product import Product
 from app.schemas.delivery import DeliveryCreate
+from app.services.business_day_service import ensure_business_day_open
+from app.services.analytics_service import (
+    update_daily_analytics,
+    update_daily_stock,
+    update_product_status,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +35,8 @@ def get_delivery(db: Session, delivery_id: int) -> Delivery:
 
 
 def create_delivery(db: Session, payload: DeliveryCreate) -> Delivery:
+    ensure_business_day_open(db, payload.delivery_date.date())
+
     delivery = Delivery(
         invoice_number=payload.invoice_number,
         supplier_name=payload.supplier_name,
@@ -57,6 +64,24 @@ def create_delivery(db: Session, payload: DeliveryCreate) -> Delivery:
 
             db.add(DeliveryItem(delivery_id=delivery.id, **item.model_dump()))
             product.current_stock += item.quantity
+            update_daily_stock(
+                db,
+                product,
+                received=item.quantity,
+            )
+
+            update_daily_analytics(
+                db,
+                product,
+            )
+
+
+            update_product_status(
+                db,
+                product,
+                delivery=True,
+            )
+            
 
         db.commit()
         db.refresh(delivery)

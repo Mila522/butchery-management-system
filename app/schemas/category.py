@@ -1,18 +1,22 @@
 from pydantic import BaseModel, ConfigDict
+from typing import Optional
 
 
-class CategoryCreate(BaseModel):
+class CategoryBase(BaseModel):
     name: str
-    description: str | None = None
+    description: Optional[str] = None
+
+
+class CategoryCreate(CategoryBase):
+    pass
 
 
 class CategoryUpdate(BaseModel):
-    name: str | None = None
-    description: str | None = None
+    name: Optional[str] = None
+    description: Optional[str] = None
 
-class CategoryResponse(BaseModel):
+
+class CategoryResponse(CategoryBase):
     id: int
-    name: str
-    description: str | None = None
 
     model_config = ConfigDict(from_attributes=True)

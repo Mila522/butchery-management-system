@@ -14,6 +14,8 @@ from app.models.inventory_adjustment import InventoryAdjustment
 from app.models.product import Product
 from app.models.user import User
 from app.schemas.inventory import DamageCreate, InventoryAdjustmentCreate
+from app.services.business_day_service import ensure_business_day_open
+from app.services.analytics_service import update_daily_analytics, update_daily_stock, update_product_status
 
 logger = logging.getLogger(__name__)
 
@@ -53,36 +55,68 @@ def get_damage(db: Session, damage_id: int) -> Damage:
     return damage
 
 
-def create_adjustment(db: Session, payload: InventoryAdjustmentCreate, current_user: User | None = None) -> InventoryAdjustment:
+def create_adjustment(
+    db: Session,
+    payload: InventoryAdjustmentCreate,
+    current_user: User | None = None,
+) -> InventoryAdjustment:
     try:
+        ensure_business_day_open(db, payload.adjustment_date.date())
         product = _get_locked_product(db, payload.product_id)
-        if not product.active:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot adjust inactive product.")
 
-        if payload.adjustment_type.value == "increase":
-            product.current_stock += payload.quantity_adjusted
-            quantity_change = payload.quantity_adjusted
-        else:
-            if product.current_stock < payload.quantity_adjusted:
+        if not product.active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot adjust an inactive product.",
+            )
+
+        # Positive = increase stock
+        # Negative = decrease stock
+        if payload.quantity_change < 0:
+            if product.current_stock < abs(payload.quantity_change):
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail=f"Insufficient stock for {product.name}. Available: {product.current_stock}.",
                 )
-            product.current_stock -= payload.quantity_adjusted
-            quantity_change = -payload.quantity_adjusted
+
+        # Apply stock adjustment
+        product.current_stock += payload.quantity_change
+        update_daily_stock(db, product)
+
+        update_daily_analytics(
+        db,
+        product,
+        )
+        update_product_status(
+        db,
+        product,
+        adjustment=True,
+        )
 
         adjustment = InventoryAdjustment(
             product_id=payload.product_id,
-            adjustment_date=payload.adjustment_date.date(),
-            quantity_change=quantity_change,
-            reason=payload.reason.value,
+            adjustment_date=payload.adjustment_date,
+            quantity_change=payload.quantity_change,
+            reason=payload.reason,
             adjusted_by=current_user.id if current_user else None,
         )
+
         db.add(adjustment)
         db.commit()
         db.refresh(adjustment)
-        logger.info("Inventory adjustment %s recorded for product %s.", adjustment.id, product.id)
+
+        logger.info(
+            "Inventory adjustment %s recorded for product %s.",
+            adjustment.id,
+            product.id,
+        )
+
         return adjustment
+
+    except HTTPException:
+        db.rollback()
+        raise
+
     except Exception:
         db.rollback()
         logger.exception("Failed to create inventory adjustment.")
@@ -91,24 +125,41 @@ def create_adjustment(db: Session, payload: InventoryAdjustmentCreate, current_u
 
 def create_damage(db: Session, payload: DamageCreate, current_user: User | None = None) -> Damage:
     try:
+        ensure_business_day_open(db, payload.damage_date.date())
         product = _get_locked_product(db, payload.product_id)
         if not product.active:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot damage inactive product.")
 
-        if product.current_stock < payload.quantity_damaged:
+        if product.current_stock < payload.quantity:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"Insufficient stock for {product.name}. Available: {product.current_stock}.",
+            )
+        product.current_stock -= payload.quantity
+        update_daily_stock(
+        db,
+        product,
+        damaged=payload.quantity,
+    )
+        
+        update_daily_analytics(
+        db,
+        product,
         )
-        product.current_stock -= payload.quantity_damaged
+        update_product_status(
+        db,
+        product,
+        damage=True,
+    )
 
         damage = Damage(
-            product_id=payload.product_id,
-            damage_date=payload.damage_date.date(),
-            quantity=payload.quantity_damaged,
-            reason=payload.reason,
-            recorded_by=current_user.id if current_user else None,
+    product_id=payload.product_id,
+    quantity=payload.quantity,
+    reason=payload.reason,
+    damage_date=payload.damage_date,
+    recorded_by=current_user.id if current_user else None,
         )
+        
         db.add(damage)
         db.commit()
         db.refresh(damage)
@@ -120,41 +171,96 @@ def create_damage(db: Session, payload: DamageCreate, current_user: User | None 
         raise
 
 
+from datetime import date
+from decimal import Decimal
+from sqlalchemy import func
+
 def create_daily_snapshot(db: Session, snapshot_date: date) -> list[DailyStock]:
+    """
+    Creates the end-of-day stock snapshot for every product and updates
+    all analytics tables.
+    """
+
     products = db.query(Product).all()
     snapshots: list[DailyStock] = []
 
     for product in products:
-        existing = db.query(DailyStock).filter(
-            DailyStock.product_id == product.id,
-            DailyStock.stock_date == snapshot_date,
-        ).first()
+
+        existing = (
+            db.query(DailyStock)
+            .filter(
+                DailyStock.product_id == product.id,
+                DailyStock.stock_date == snapshot_date,
+            )
+            .first()
+        )
+
         if existing:
             snapshots.append(existing)
             continue
 
-        received = db.query(func.coalesce(func.sum(DeliveryItem.quantity), 0)).join(Delivery).filter(
-            DeliveryItem.product_id == product.id,
-            func.date(Delivery.delivery_date) == snapshot_date,
-        ).scalar()
-        damaged = db.query(func.coalesce(func.sum(Damage.quantity), 0)).filter(
-            Damage.product_id == product.id,
-            Damage.damage_date == snapshot_date,
-        ).scalar()
+        received = (
+            db.query(func.coalesce(func.sum(DeliveryItem.quantity), 0))
+            .join(Delivery)
+            .filter(
+                DeliveryItem.product_id == product.id,
+                func.date(Delivery.delivery_date) == snapshot_date,
+            )
+            .scalar()
+        )
+
+        damaged = (
+            db.query(func.coalesce(func.sum(Damage.quantity), 0))
+            .filter(
+                Damage.product_id == product.id,
+                func.date(Damage.damage_date) == snapshot_date,
+            )
+            .scalar()
+        )
 
         closing = product.current_stock
-        opening = closing + Decimal(str(damaged)) - Decimal(str(received))
+
+        opening = (
+            Decimal(str(closing))
+            + Decimal(str(damaged))
+            - Decimal(str(received))
+        )
+
         snapshot = DailyStock(
             product_id=product.id,
             stock_date=snapshot_date,
             opening_stock=opening,
             closing_stock=closing,
-            notes=f"Received: {received}; damaged: {damaged}",
+            notes=f"Received: {received}; Damaged: {damaged}",
         )
+
         db.add(snapshot)
+
+        # ----------------------------------
+        # Update analytics tables
+        # ----------------------------------
+
+        update_daily_stock(
+            db,
+            product,
+        )
+
+        update_daily_analytics(
+            db,
+            product,
+        )
+
+        update_product_status(
+            db,
+            product,
+            closing_stock=True,
+        )
+
         snapshots.append(snapshot)
 
     db.commit()
+
     for snapshot in snapshots:
         db.refresh(snapshot)
+
     return snapshots

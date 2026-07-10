@@ -2,9 +2,8 @@ from sqlalchemy import (
     Column,
     Integer,
     Numeric,
-    ForeignKey
+    ForeignKey,
 )
-
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -18,31 +17,31 @@ class DeliveryItem(Base):
     delivery_id = Column(
         Integer,
         ForeignKey("deliveries.id"),
-        nullable=False
+        nullable=False,
     )
 
     product_id = Column(
         Integer,
         ForeignKey("products.id"),
-        nullable=False
+        nullable=False,
     )
 
     quantity = Column(
         Numeric(10, 2),
-        nullable=False
+        nullable=False,
     )
 
     unit_cost = Column(
         Numeric(10, 2),
-        nullable=False
+        nullable=False,
     )
 
     delivery = relationship(
         "Delivery",
-        back_populates="items"
+        back_populates="items",
     )
 
     product = relationship(
         "Product",
-        back_populates="delivery_items"
+        back_populates="delivery_items",
     )

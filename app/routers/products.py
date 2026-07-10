@@ -56,3 +56,11 @@ def deactivate_product(
     _=Depends(require_roles(UserRole.ADMIN, UserRole.MANAGER)),
 ):
     return product_service.deactivate_product(db, product_id)
+
+@router.patch("/{product_id}/activate", response_model=ProductResponse)
+def activate_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+    _=Depends(require_roles(UserRole.ADMIN, UserRole.MANAGER)),
+):
+    return product_service.activate_product(db, product_id)
