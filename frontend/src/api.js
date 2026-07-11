@@ -39,10 +39,24 @@ async function request(path, options = {}) {
 export const api = {
   // Products
   getProducts: () => request("/products/?limit=200"),
+  getProduct: (id) => request(`/products/${id}`),
   createProduct: (payload) =>
     request("/products/", {
       method: "POST",
       body: JSON.stringify(payload),
+    }),
+  updateProduct: (id, payload) =>
+    request(`/products/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+  deactivateProduct: (id) =>
+    request(`/products/${id}/deactivate`, {
+      method: "PATCH",
+    }),
+  activateProduct: (id) =>
+    request(`/products/${id}/activate`, {
+      method: "PATCH",
     }),
 
   // Categories

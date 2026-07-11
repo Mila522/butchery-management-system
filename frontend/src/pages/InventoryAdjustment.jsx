@@ -55,7 +55,13 @@ export default function InventoryAdjustment() {
     e.preventDefault();
 
     try {
-      await api.createAdjustment(adjustment);
+      const quantity = Number(adjustment.quantity_change || 0);
+      await api.createAdjustment({
+        product_id: Number(adjustment.product_id),
+        quantity_change: adjustment.adjustment_type === "decrease" ? -Math.abs(quantity) : Math.abs(quantity),
+        reason: adjustment.reason,
+        adjustment_date: adjustment.adjustment_date,
+      });
 
       alert("Inventory adjustment recorded successfully.");
 
@@ -210,17 +216,22 @@ export default function InventoryAdjustment() {
           minWidth={760}
         >
           {adjustments.slice(0, 12).map((row) => (
+            (() => {
+              const adjustmentType = row.adjustment_type ?? (Number(row.quantity_change) >= 0 ? "increase" : "decrease");
+              return (
             <tr key={row.id}>
-              <td className="cell-strong">{row.product_name ?? `Product #${row.product_id}`}</td>
+              <td className="cell-strong">{row.product_name ?? "Unknown product"}</td>
               <td>
-                <span className={`badge ${row.adjustment_type === "increase" ? "badge-success" : "badge-danger"}`}>
-                  {row.adjustment_type}
+                <span className={`badge ${adjustmentType === "increase" ? "badge-success" : "badge-danger"}`}>
+                  {adjustmentType}
                 </span>
               </td>
-              <td>{row.quantity_change}</td>
+              <td>{Math.abs(Number(row.quantity_change || 0))}</td>
               <td>{row.reason}</td>
               <td className="cell-muted">{new Date(row.adjustment_date).toLocaleDateString()}</td>
             </tr>
+              );
+            })()
           ))}
         </DataTable>
       </div>

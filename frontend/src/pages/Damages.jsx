@@ -196,7 +196,7 @@ export default function Damages() {
         >
           {damages.slice(0, 12).map((row) => (
             <tr key={row.id}>
-              <td className="cell-strong">{row.product_name ?? `Product #${row.product_id}`}</td>
+              <td className="cell-strong">{row.product_name ?? "Unknown product"}</td>
               <td>
                 <span className="badge badge-danger">{row.quantity}</span>
               </td>

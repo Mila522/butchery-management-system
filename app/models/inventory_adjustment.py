@@ -44,5 +44,13 @@ class InventoryAdjustment(Base):
         back_populates="adjustments",
     )
 
+    @property
+    def product_name(self):
+        return self.product.name if self.product else None
+
+    @property
+    def adjustment_type(self):
+        return "increase" if self.quantity_change >= 0 else "decrease"
+
     def __repr__(self):
         return f"<InventoryAdjustment(id={self.id})>"

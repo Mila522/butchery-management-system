@@ -14,6 +14,8 @@ class InventoryAdjustmentCreate(BaseModel):
 class InventoryAdjustmentResponse(BaseModel):
     id: int
     product_id: int
+    product_name: str | None = None
+    adjustment_type: str | None = None
     quantity_change: Decimal
     reason: str
     adjusted_by: int | None
@@ -34,6 +36,7 @@ class DamageCreate(BaseModel):
 class DamageResponse(BaseModel):
     id: int
     product_id: int
+    product_name: str | None = None
     quantity: Decimal
     reason: str
     damage_date: datetime

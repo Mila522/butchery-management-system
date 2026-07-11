@@ -3,7 +3,7 @@ from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from fastapi import HTTPException, status
 
 from app.models.daily_stock import DailyStock
@@ -28,28 +28,38 @@ def _get_locked_product(db: Session, product_id: int) -> Product:
 
 
 def list_adjustments(db: Session, limit: int = 50, offset: int = 0, product_id: int | None = None):
-    query = db.query(InventoryAdjustment)
+    query = db.query(InventoryAdjustment).options(selectinload(InventoryAdjustment.product))
     if product_id is not None:
         query = query.filter(InventoryAdjustment.product_id == product_id)
     return query.order_by(InventoryAdjustment.adjustment_date.desc()).offset(offset).limit(limit).all()
 
 
 def get_adjustment(db: Session, adjustment_id: int) -> InventoryAdjustment:
-    adjustment = db.query(InventoryAdjustment).filter(InventoryAdjustment.id == adjustment_id).first()
+    adjustment = (
+        db.query(InventoryAdjustment)
+        .options(selectinload(InventoryAdjustment.product))
+        .filter(InventoryAdjustment.id == adjustment_id)
+        .first()
+    )
     if not adjustment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory adjustment not found.")
     return adjustment
 
 
 def list_damages(db: Session, limit: int = 50, offset: int = 0, product_id: int | None = None):
-    query = db.query(Damage)
+    query = db.query(Damage).options(selectinload(Damage.product))
     if product_id is not None:
         query = query.filter(Damage.product_id == product_id)
     return query.order_by(Damage.damage_date.desc()).offset(offset).limit(limit).all()
 
 
 def get_damage(db: Session, damage_id: int) -> Damage:
-    damage = db.query(Damage).filter(Damage.id == damage_id).first()
+    damage = (
+        db.query(Damage)
+        .options(selectinload(Damage.product))
+        .filter(Damage.id == damage_id)
+        .first()
+    )
     if not damage:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Damage record not found.")
     return damage
@@ -100,18 +110,20 @@ def create_adjustment(
             reason=payload.reason,
             adjusted_by=current_user.id if current_user else None,
         )
+        adjustment.product = product
 
         db.add(adjustment)
+        db.flush()
+        adjustment_id = adjustment.id
         db.commit()
-        db.refresh(adjustment)
 
         logger.info(
             "Inventory adjustment %s recorded for product %s.",
-            adjustment.id,
+            adjustment_id,
             product.id,
         )
 
-        return adjustment
+        return get_adjustment(db, adjustment_id)
 
     except HTTPException:
         db.rollback()
@@ -159,12 +171,14 @@ def create_damage(db: Session, payload: DamageCreate, current_user: User | None 
     damage_date=payload.damage_date,
     recorded_by=current_user.id if current_user else None,
         )
+        damage.product = product
         
         db.add(damage)
+        db.flush()
+        damage_id = damage.id
         db.commit()
-        db.refresh(damage)
-        logger.info("Damage %s recorded for product %s.", damage.id, product.id)
-        return damage
+        logger.info("Damage %s recorded for product %s.", damage_id, product.id)
+        return get_damage(db, damage_id)
     except Exception:
         db.rollback()
         logger.exception("Failed to record damage.")

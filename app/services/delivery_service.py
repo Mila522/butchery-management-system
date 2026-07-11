@@ -1,6 +1,6 @@
 import logging
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from fastapi import HTTPException, status
 
 from app.models.delivery import Delivery
@@ -18,7 +18,9 @@ logger = logging.getLogger(__name__)
 
 
 def list_deliveries(db: Session, limit: int = 50, offset: int = 0, search: str | None = None):
-    query = db.query(Delivery)
+    query = db.query(Delivery).options(
+        selectinload(Delivery.items).selectinload(DeliveryItem.product)
+    )
     if search:
         pattern = f"%{search}%"
         query = query.filter(
@@ -28,7 +30,12 @@ def list_deliveries(db: Session, limit: int = 50, offset: int = 0, search: str |
 
 
 def get_delivery(db: Session, delivery_id: int) -> Delivery:
-    delivery = db.query(Delivery).filter(Delivery.id == delivery_id).first()
+    delivery = (
+        db.query(Delivery)
+        .options(selectinload(Delivery.items).selectinload(DeliveryItem.product))
+        .filter(Delivery.id == delivery_id)
+        .first()
+    )
     if not delivery:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Delivery not found.")
     return delivery
@@ -62,7 +69,9 @@ def create_delivery(db: Session, payload: DeliveryCreate) -> Delivery:
                     detail=f"Product {product.name} is inactive.",
                 )
 
-            db.add(DeliveryItem(delivery_id=delivery.id, **item.model_dump()))
+            delivery_item = DeliveryItem(delivery_id=delivery.id, **item.model_dump())
+            delivery_item.product = product
+            db.add(delivery_item)
             product.current_stock += item.quantity
             update_daily_stock(
                 db,
@@ -83,10 +92,10 @@ def create_delivery(db: Session, payload: DeliveryCreate) -> Delivery:
             )
             
 
+        delivery_id = delivery.id
         db.commit()
-        db.refresh(delivery)
         logger.info("Delivery %s recorded with %s items.", delivery.invoice_number, len(payload.items))
-        return delivery
+        return get_delivery(db, delivery_id)
     except IntegrityError as exc:
         db.rollback()
         raise HTTPException(

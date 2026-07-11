@@ -45,3 +45,7 @@ class DeliveryItem(Base):
         "Product",
         back_populates="delivery_items",
     )
+
+    @property
+    def product_name(self):
+        return self.product.name if self.product else None

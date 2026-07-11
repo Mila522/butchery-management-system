@@ -44,5 +44,9 @@ class Damage(Base):
         back_populates="damages",
     )
 
+    @property
+    def product_name(self):
+        return self.product.name if self.product else None
+
     def __repr__(self):
         return f"<Damage(id={self.id}, product_id={self.product_id})>"

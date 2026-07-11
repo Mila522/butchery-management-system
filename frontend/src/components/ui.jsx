@@ -34,16 +34,22 @@ export function SectionHeader({ title, description, actions }) {
   );
 }
 
-export function StatCard({ label, value, detail, tone = "neutral", icon }) {
+export function StatCard({ label, value, detail, tone = "neutral", icon, onClick }) {
+  const Component = onClick ? "button" : "section";
+
   return (
-    <Card className={`stat-card stat-card--${tone}`}>
+    <Component
+      className={`erp-card stat-card stat-card--${tone} ${onClick ? "stat-card--clickable" : ""}`.trim()}
+      type={onClick ? "button" : undefined}
+      onClick={onClick}
+    >
       <div className="stat-card__top">
         <span>{label}</span>
         {icon && <span className="stat-card__icon">{icon}</span>}
       </div>
       <strong>{value}</strong>
       {detail && <small>{detail}</small>}
-    </Card>
+    </Component>
   );
 }
 
@@ -93,7 +99,7 @@ export function ActionBar({ children }) {
 export function SearchBar({ value, onChange, placeholder = "Search" }) {
   return (
     <div className="search-bar">
-      <span aria-hidden="true">⌕</span>
+      <span aria-hidden="true">/</span>
       <input value={value} onChange={onChange} placeholder={placeholder} />
     </div>
   );
